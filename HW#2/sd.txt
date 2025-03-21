@@ -1,0 +1,107 @@
+import numpy as np 
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+data=np.loadtxt('data.txt')
+num_f= (data.shape[1])-1
+num_c= len(np.unique(data[:,-1]))
+
+x=data[:,:-1]
+y=data[:,-1].astype(int)
+
+# import matplotlib.pyplot as plt
+xtrain,xtest,ytrain,ytest=train_test_split(x,y,test_size=0.25)
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+def derivation(w, b, X, Y, iteration, lr):    
+    costs = []
+    iter_num=0
+    for i in range(1,iteration):
+        m = len(Y)
+        Z = np.dot(X, w) + b
+        A = sigmoid(Z)
+        cost = -1/m * np.sum(Y * np.log(A) + (1 - Y) * np.log(1 - A))
+        costs.append(cost)
+        iter_num+=1
+        dw = 1/m * np.dot(X.T, (A - Y))
+        db = 1/m * np.sum(A - Y)
+        w = w - lr * dw
+        b = b - lr * db
+        if i%2==0:
+          if (np.abs (cost-costs[-2]))<=0.000001:
+#             train_accuracy = 100 - np.mean(np.abs(y_train_pred - y_train)) * 100
+            break
+        
+    return w, b, costs,iter_num,Z
+
+def one_vs_one(X, y, num_classes, iteration, lr):
+    classifiers = []
+    for i in range(1,num_classes+1):
+        for j in range(i , num_classes+1):
+            indices = np.logical_or(y == i, y == j)
+            binary_X = X[indices]
+            binary_y = y[indices]
+            binary_y = np.where(binary_y == i, 0, 1)
+
+            w = np.zeros((X.shape[1], 1))
+            b = 0
+
+            w, b, costs,iter_num,z = derivation(w, b, binary_X, binary_y, iteration, lr)
+            for k in range(len(z)):
+              if np.array_equal(z[k],binary_y[k]):
+                correct+=1
+            pred_train= (correct/len(z))*100    
+            classifiers.append(( pred_train,iter_num,costs))
+
+    return classifiers 
+def one_vs_all (x,y,num_class, iteration,lr,converg=0.000001):
+    classifi=[]
+    for i in range(1,num_class+1):
+        binary_y = np.where(y==i,1,0)
+        w = np.zeros((x.shape[1], 1))
+        b = 0
+        correct=0
+
+        w, b, costs,iter_num,z  = derivation(w, b, x, binary_y, iteration, lr)
+        
+        for k in range(len(z)):
+            if z[k]==binary_y[k]:
+                correct+=1
+        pred_train= (correct/len(z))*100
+        classifi.append(( pred_train,iter_num,costs))
+    return classifi
+
+       
+       
+def plot_costs(classifiers):
+    for k, ( pred_train,iter_num,costs) in enumerate(classifiers):
+        print(f'pred_train is: {pred_train}')
+
+        print(iter_num)
+        plt.plot(costs, label=f'Classifier {k + 1}',c='b')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Cost')
+        plt.title('Cost Function Over Iterations for Each Classifier')
+        plt.legend()
+        plt.show()
+classifiers = one_vs_one(xtrain, ytrain, num_c, iteration=5000, lr=0.01)       
+plot_costs(classifiers)        
+        
+def plot_costs(classifi):
+    for k, ( pred_train,iter_num,costs) in enumerate(classifi):
+        print(f'pred_train is: {pred_train}')
+        print(iter_num)
+        plt.plot(costs, label=f'Classifier {k + 1}',c='r')
+
+        plt.xlabel('Iterations')
+        plt.ylabel('Costs')
+        plt.title('Costs Function Over Iterations for Each Classifier')
+        plt.legend()
+        plt.show()
+
+
+
+classifier= one_vs_all(xtrain, ytrain, num_c, iteration=5000, lr=0.01)       
+plot_costs(classifier)
